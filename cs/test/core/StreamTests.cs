@@ -1,15 +1,15 @@
 ﻿namespace UnitTest
 {
     using System.IO;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using NUnit.Framework;
     using Bond;
     using Bond.Protocols;
     using Bond.IO.Unsafe;
 
-    [TestClass]
+    [TestFixture]
     public class StreamTests
     {
-        [TestMethod]
+        [Test]
         public void StreamPositionLengthTest()
         {
             const int _50MB = 50*1024*1024;
@@ -58,6 +58,44 @@
             Assert.IsTrue(from2.IsEqual<Containers>(to2));
 
             Assert.IsTrue(input.Position == pos);
+        }
+
+        
+        delegate void IntTest<T>(T value);
+
+        [Test]
+        public void Varint()
+        {
+            IntTest<ushort> test16 = (value) =>
+            {
+                var output = new OutputBuffer();
+                output.WriteVarUInt16(value);
+                var input = new InputBuffer(output.Data);
+                Assert.AreEqual(value, input.ReadVarUInt16());
+            };
+
+            IntTest<uint> test32 = (value) =>
+            {
+                var output = new OutputBuffer();
+                output.WriteVarUInt32(value);
+                var input = new InputBuffer(output.Data);
+                Assert.AreEqual(value, input.ReadVarUInt32());
+            };
+
+            IntTest<ulong> test64 = (value) =>
+            {
+                var output = new OutputBuffer();
+                output.WriteVarUInt64(value);
+                var input = new InputBuffer(output.Data);
+                Assert.AreEqual(value, input.ReadVarUInt64());
+            };
+
+            test16(ushort.MinValue);
+            test16(ushort.MaxValue);
+            test32(uint.MinValue);
+            test32(uint.MaxValue);
+            test64(ulong.MinValue);
+            test64(ulong.MaxValue);
         }
     }
 }

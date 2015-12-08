@@ -14,6 +14,7 @@ namespace Bond.Expressions
     public class ObjectParser : IParser
     {
         static readonly MethodInfo moveNext = Reflection.MethodInfoOf((IEnumerator e) => e.MoveNext());
+        static readonly ConstructorInfo arraySegmentCtor = typeof(ArraySegment<byte>).GetConstructor(typeof(byte[]));
         delegate Expression ContainerItemHandler(Expression value, Expression next, Expression count);
         readonly ParameterExpression objParam;
         readonly TypeAlias typeAlias;
@@ -179,7 +180,7 @@ namespace Bond.Expressions
         {
             if (schemaType.IsBonded())
             {
-                return handler(value);
+                return handler(PrunedExpression.Convert(value, typeof(IBonded)));
             }
             
             var bondedType = typeof(Bonded<>).MakeGenericType(objectType);
@@ -192,6 +193,9 @@ namespace Bond.Expressions
         {
             if (schemaType.IsBondBlob())
                 return typeAlias.Convert(value, schemaType);
+
+            if (objectType == typeof(byte[]))
+                return Expression.New(arraySegmentCtor, value);
 
             // TODO: convert List<sbyte> to ArraySegment<byte> for faster serialization?
             return null;
@@ -320,11 +324,12 @@ namespace Bond.Expressions
         {
             Debug.Assert(schemaType.IsBondBlob());
 
+            var arraySegment = Expression.Variable(typeof(ArraySegment<byte>), "arraySegment");
             var count = Expression.Variable(typeof(int), "count");
             var index = Expression.Variable(typeof(int), "index");
             var end = Expression.Variable(typeof(int), "end");
             var blob = typeAlias.Convert(value, schemaType);
-            var item = Expression.ArrayIndex(Expression.Property(blob, "Array"), Expression.PostIncrementAssign(index));
+            var item = Expression.ArrayIndex(Expression.Property(arraySegment, "Array"), Expression.PostIncrementAssign(index));
 
             var loop = handler(
                 new ObjectParser(this, item, typeof(sbyte)),
@@ -333,9 +338,10 @@ namespace Bond.Expressions
                 count);
 
             return Expression.Block(
-                new[] { count, index, end },
-                Expression.Assign(index, Expression.Property(blob, "Offset")),
-                Expression.Assign(count, Expression.Property(blob, "Count")),
+                new[] { arraySegment, count, index, end },
+                Expression.Assign(arraySegment, blob),
+                Expression.Assign(index, Expression.Property(arraySegment, "Offset")),
+                Expression.Assign(count, Expression.Property(arraySegment, "Count")),
                 Expression.Assign(end, Expression.Add(index, count)),
                 loop);
         }

@@ -3,32 +3,35 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using NUnit.Framework;
     using Bond;
     using Bond.Tag;
 
-    [TestClass]
+    [TestFixture]
     public class ReflectionDefaultValueTests
     {
-        [TestMethod, ExpectedException(typeof(InvalidOperationException))]
+        [Test]
         public void ReflectionDefaultAttribute_Absent_On_Interface()
         {
-            GetDefaultValue<IFoo>("NoDefault");
+            Assert.AreEqual(0, GetDefaultValue<IFoo>("IntNoDefault"));
+            Assert.AreEqual(0.0, GetDefaultValue<IFoo>("DoubleNoDefault"));
+            Assert.AreEqual(0.0f, GetDefaultValue<IFoo>("FloatNoDefault"));
+            Assert.AreEqual(false, GetDefaultValue<IFoo>("BoolNoDefault"));
         }
 
-        [TestMethod, ExpectedException(typeof(InvalidOperationException))]
+        [Test]
         public void ReflectionDefaultAttribute_Non_Null_On_Nullable_Property()
         {
-            GetDefaultValue<IFoo>("NullableNonNullDefault");
+            Assert.Throws<InvalidOperationException>(() => GetDefaultValue<IFoo>("NullableNonNullDefault"));
         }
 
-        [TestMethod, ExpectedException(typeof(InvalidOperationException))]
+        [Test]
         public void ReflectionDefaultAttribute_On_Class()
         {
-            GetDefaultValue<Foo>("HasDefault");
+            Assert.Throws<InvalidOperationException>(() => GetDefaultValue<Foo>("HasDefault"));
         }
 
-        [TestMethod]
+        [Test]
         public void ReflectionDefaultAttribute_On_Interface()
         {
             Assert.AreEqual(7, GetDefaultValue<IFoo>("IntField"));
@@ -48,18 +51,18 @@
             Assert.IsNull(GetDefaultValue<IFoo>("NothingBlob"));
         }
         
-        private static object GetDefaultValue<T>(string name)
+        static object GetDefaultValue<T>(string name)
         {
             return GetMember<T>(name).GetDefaultValue();
         }
 
-        private static ISchemaField GetMember<T>(string name)
+        static ISchemaField GetMember<T>(string name)
         {
             return typeof(T).GetSchemaFields().Single(f => f.Name.Equals(name, StringComparison.Ordinal));
         }
 
         [Schema]
-        private interface IFoo
+        interface IFoo
         {
             [Id(1), Default(7)]
             int IntField { get; set; }
@@ -83,7 +86,16 @@
             string NullStringField { get; set; }
 
             [Id(8)]
-            int NoDefault { get; set; }
+            int IntNoDefault { get; set; }
+
+            [Id(18)]
+            float FloatNoDefault { get; set; }
+
+            [Id(19)]
+            double DoubleNoDefault { get; set; }
+
+            [Id(20)]
+            bool BoolNoDefault { get; set; }
 
             [Id(9), Type(typeof(nullable<IFoo>))]
             IFoo NullableNoDefault { get; set; }
@@ -114,7 +126,7 @@
         }
 
         [Schema]
-        private class Foo
+        class Foo
         {
             [Id(1), Default(7)]
             int HasDefault { get; set; }

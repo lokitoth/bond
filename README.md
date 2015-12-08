@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/Microsoft/bond.svg?branch=master)](https://travis-ci.org/Microsoft/bond)
+[![NuGet](https://img.shields.io/nuget/v/Bond.CSharp.svg?style=flat)](https://www.nuget.org/packages/Bond.CSharp/)
+
 Bond
 ====
 
@@ -8,9 +11,9 @@ Microsoft in high scale services.
 
 Bond is published on GitHub at [https://github.com/Microsoft/bond/](https://github.com/Microsoft/bond/).
 
-For details, see the User's Manuals for [C++](http://Microsoft.github.io/bond/manual/bond_cpp.html), [C#](http://Microsoft.github.io/bond/manual/bond_cs.html) and [Python](http://Microsoft.github.io/bond/manual/bond_py.html).
+For details, see the User's Manuals for [C++](https://Microsoft.github.io/bond/manual/bond_cpp.html), [C#](https://Microsoft.github.io/bond/manual/bond_cs.html) and [Python](https://Microsoft.github.io/bond/manual/bond_py.html).
 
-For a discussion how Bond compares to similar frameworks see [Why Bond](http://Microsoft.github.io/bond/why_bond.html).
+For a discussion how Bond compares to similar frameworks see [Why Bond](https://Microsoft.github.io/bond/why_bond.html).
 
 Dependencies
 ------------
@@ -21,7 +24,7 @@ The Bond repository uses Git submodules and should be cloned with the
     git clone --recursive https://github.com/Microsoft/bond.git
 
 In order to build Bond you will need CMake (2.8.12+), Haskell (ghc 7.4+ and 
-cabal-install 1.20+) and Boost (1.54+). The core Bond C++ library can be used 
+cabal-install 1.18+) and Boost (1.54+). The core Bond C++ library can be used 
 with C++03 compilers, although Python support, unit tests and various examples 
 require some C++11 features.
 
@@ -67,6 +70,8 @@ packages are needed:
         libboost-test-dev \
         libboost-python-dev
 
+    cabal install happy
+
 Running the following command in the build directory will build and execute all 
 the tests and examples:
 
@@ -77,22 +82,24 @@ assuming you have enough memory)
 
 ### OS X
 
-- Install XCode 6.1
-- Install CMake ([http://www.cmake.org/download/](http://www.cmake.org/download/))
-- Install Haskell Platform ([http://haskell.org/platform/](http://haskell.org/platform/))
+Install XCode and then run the following command to install required packages 
+using Homebrew ([http://brew.sh/](http://brew.sh/)):
 
-Update cabal to the latest version:
-
-    cabal update
-    cabal install cabal-install
-
-Install Boost using Homebrew ([http://brew.sh/](http://brew.sh/)):
-
-    brew install boost boost-python
+    brew install \
+        cmake \
+        ghc \
+        cabal-install \
+        boost \
+        boost-python
 
 (boost-python is optional and only needed for Python support)
 
-Bond can be built on OS X using either standard *nix makefiles or XCode. In 
+Update cabal package database and install `happy` (only needed for tests): 
+
+    cabal update
+    cabal install happy
+
+Bond can be built on OS X using either standard \*nix makefiles or XCode. In 
 order to generate and build makefiles, in the root `bond` directory run:
 
     mkdir build
@@ -101,31 +108,48 @@ order to generate and build makefiles, in the root `bond` directory run:
     make
     sudo make install
 
-Alternatively you can use the CMake application to generate either *nix 
-makefiles or XCode project into a directory of your choice (it doesn't have to 
-be called `build`).
+Alternatively you can generate XCode project by passing `-G Xcode` option to 
+cmake:
 
-You can build and run unit tests by building the `check` target in XCode or 
-by running make in the build directory:
+    cmake -G Xcode ..
+
+You can build and run unit tests by building the `check` target in XCode or by 
+running make in the build directory:
 
     make --jobs 8 check
 
+Note that if you are using Homebrew's Python, you'll need to build
+boost-python from source:
+
+    brew install --build-from-source boost-python
+
+and tell cmake the location of Homebrew's libpython by setting `PYTHON_LIBRARY` 
+variable, e.g.:
+
+    cmake .. -DPYTHON_LIBRARY=/usr/local/Cellar/python/2.7.9/Frameworks/Python.framework/Versions/2.7/lib/libpython2.7.dylib
+
 ### Windows
 
-- Install Visual Studio 2013
-- Install CMake ([http://www.cmake.org/download/](http://www.cmake.org/download/))
-- Install Haskell Platform ([http://haskell.org/platform/](http://haskell.org/platform/))
+[![Build Status](https://ci.appveyor.com/api/projects/status/github/Microsoft/bond?svg=true&branch=master)](https://ci.appveyor.com/project/sapek/bond/branch/master)
 
+Install the following tools:
 
-Update cabal to the latest version (if behind a proxy, set environment variable 
-`HTTP_PROXY=http://proxy:port` before running cabal):
+- Visual Studio 2013 or 2015
+- CMake ([http://www.cmake.org/download/](http://www.cmake.org/download/))
+- Haskell Platform ([http://haskell.org/platform/](http://haskell.org/platform/))
+
+If you are building on a network behind a proxy, set the environment variable 
+`HTTP_PROXY`, e.g.:
+
+    set HTTP_PROXY=http://your-proxy-name:80
+
+Update cabal package database:
 
     cabal update
-    cabal install cabal-install
 
 Now you are ready to build the C# version of Bond. Open the solution file 
 `cs\cs.sln` in Visual Studio 2013 and build as usual. The C# unit tests can 
-also be run from with the solution.
+also be run from within the solution.
 
 The C++ and Python versions of Bond additionally require:
 
@@ -134,30 +158,39 @@ The C++ and Python versions of Bond additionally require:
 
 You may need to set the environment variables `BOOST_ROOT` and `BOOST_LIBRARYDIR` 
 to specify where Boost and its pre-built libraries for your environment can be 
-found. The core Bond library and most examples only require Boost headers. The 
+found, e.g.: 
+
+    set BOOST_ROOT=D:\boost_1_57_0
+    set BOOST_LIBRARYDIR=D:\boost_1_57_0\lib64-msvc-12.0
+
+The core Bond library and most examples only require Boost headers. The 
 pre-built libraries are only needed for unit tests and Python support. If Boost
 or Python libraries are not found on the system then some tests and examples will 
 not be built.
 
-In order to configure C++/Python project run `cmake-gui`, select the root of 
-this repository as the source code directory and some other directory as the 
-target for generated project files and build binaries. Now press Generate and 
-select desired target build environment. This configuration step has to be 
-performed only once. From now on you can use the generated solution `bond.sln`.
+In order to configure solution for Visual Studio 2013 run the following 
+commands from the root `bond` directory:
 
-IMPORTANT: Bond unit tests are very large. If you are building using the Visual 
-Studio toolchain you have to select 64-bit tools by setting the following 
-environment variable:
+    mkdir build
+    cd build
+    cmake -G "Visual Studio 12 2013 Win64" ..
 
-For Visual Studio 2012:
-
-    set _IsNativeEnvironment=true
-
-For Visual Studio 2013:
+Instead of `cmake` you can also use `cmake-gui` and specify configuration 
+settings in the UI. This configuration step has to be performed only once. From 
+now on you can use the generated solution `build\bond.sln` from Visual Studio 
+or build from command line using `cmake`:
 
     set PreferredToolArchitecture=x64
+    cmake --build . --target
+    cmake --build . --target INSTALL
 
-In order to run unit tests on the Debug build, execute the following command in 
-the build directory:
+In order to build and execute the unit tests and examples run:
 
-    ctest -C Debug
+    cmake --build . --target check -- /maxcpucount:8
+
+Setting `PreferredToolArchitecture=x64` selects the 64-bit toolchain which 
+dramatically improves build speed (Bond unit tests are too big to build with 
+32-bit tools). This variable works for Visual Studio 2013 or 2015. For VS 2012 set the 
+following variable instead:
+
+    set _IsNativeEnvironment=true

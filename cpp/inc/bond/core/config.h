@@ -5,8 +5,10 @@
 
 #include <boost/config.hpp>
 
+#if _MSC_VER < 1900
 #if defined(BOOST_NO_CXX11_DEFAULTED_FUNCTIONS)
 #define BOND_NO_CXX11_DEFAULTED_FUNCTIONS
+#endif
 #endif
 
 #if defined(BOOST_NO_CXX11_AUTO_DECLARATIONS) || defined(BOOST_NO_AUTO_DECLARATIONS)
@@ -69,3 +71,6 @@
 #define BOND_CALL  
 #define BOND_NO_INLINE  __attribute__((noinline))
 #endif
+
+#define BOND_NOEXCEPT BOOST_NOEXCEPT_OR_NOTHROW
+

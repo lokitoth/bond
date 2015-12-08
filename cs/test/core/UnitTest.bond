@@ -1,5 +1,6 @@
-import "bond\core\bond.bond"
+import "bond/core/bond.bond"
 import "Aliases.bond"
+import "Bond File With Spaces.bond"
 
 namespace UnitTest
 
@@ -11,6 +12,7 @@ enum EnumType1
     EnumValue2 = 10,
     EnumValue3 = -10,
     EnumValue4 = 0x2A,
+    Low = 1,
     EnumValue5 = 0XFFFFFFFFFFFFFFF6, //-10 in two's complement
 };
 
@@ -32,8 +34,25 @@ struct BasicTypes
     10: uint64 _uint64;
     18: double _double;
     20: float _float;
-    21: EnumType1 _enum1 = EnumValue1;
+    21: EnumType1 _enum1 = Low;
     22: DateTime dt;
+};
+
+struct Integers
+{
+    14: int8 _int8;
+    15: int16 _int16;
+    16: int32 _int32;
+    17: int64 _int64;
+    13: uint8 _uint8;
+    11: uint16 _uint16;
+    12: uint32 _uint32;
+    10: uint64 _uint64;
+};
+
+struct MaxUInt64
+{
+    10: uint64 _uint64;
 };
 
 struct FieldOfStructWithAliases
@@ -134,12 +153,12 @@ struct Derived : EmptyBase
     1: Nested1 nested;
 };
 
-struct B 
+struct B
 {
     0: int32 b;
 }
 
-struct B1 : B 
+struct B1 : B
 {
     [JsonName("b1")]
     0: int32 b;
@@ -175,7 +194,7 @@ struct Deep : B5 {}
 struct DerivedView view_of Derived
 {
     derived;
-}; 
+};
 
 struct Nothing
 {
@@ -198,6 +217,7 @@ struct Nothing
     32: vector<list<int32>> vl = nothing;
     33: blob b = nothing;
     34: map<string, double> m = nothing;
+    35: DateTime dt = nothing;
 };
 
 struct NotNothingView
@@ -225,6 +245,7 @@ struct NullableBasicTypes
     18: nullable<double> _double;
     20: nullable<float> _float;
     21: nullable<EnumType1> _enum1;
+    22: nullable<DateTime> dt;
 };
 
 struct NullableStruct
@@ -236,7 +257,7 @@ struct NullableStruct
 struct SimpleContainers
 {
     0: vector<string> strings;
-    1: vector<BasicTypes> basics;    
+    1: vector<BasicTypes> basics;
     2: map<int32, string> numbers;
 };
 
@@ -457,19 +478,6 @@ struct NullableContainers
     3: NullableMaps nm;
 };
 
-struct NestedContainers
-{
-    0: vector<vector<uint64>> vvb;
-    1: list<NullableContainers> vnc;
-    2: vector<vector<BasicTypes>> vvbt;
-    3: vector<list<Nested>> vln;
-    4: list<vector<string>> lvs;
-    5: list<set<float>> lsf;
-    6: vector<set<bool>> vsb;
-    7: map<string, list<bool>> mslb;
-    8: map<int32, map<int64, Nested>> mimbn;
-};
-
 struct TreeNode;
 
 struct Tree
@@ -490,14 +498,14 @@ struct StructWithDefaults
     0:bool m_bool_1 = true;
     1:bool m_bool_2 = false;
     2:bool m_bool_3;
-    
+
     3:string m_str_1 = "default string value";
     4:string m_str_2;
 
     5:int8 m_int8_4 = -127;
     6:int8 m_int8_5;
 
-    7:int16 m_int16_4 = -32767; 
+    7:int16 m_int16_4 = -32767;
     8:int16 m_int16_5;
 
     9:int32 m_int32_4;
@@ -659,18 +667,19 @@ struct NonGenericWString
 
 // Name conflicts
 enum TypeAttribute {DefaultAttribute}
-struct IdAttribute 
+struct IdAttribute
 {
     0: TypeAttribute field = DefaultAttribute;
 }
+
 struct classT {}
 struct structT {}
-struct GenericConflict<structT : value> 
+struct GenericConflict<structT : value>
 {
     0: structT field;
 }
 
-struct Foo<classT> 
+struct Foo<classT>
 {
     0: classT field;
 }
@@ -690,19 +699,19 @@ struct DerivedPolymorphic : WithPolymorphic
 struct WithMeta
 {
     1: bond_meta::name theName;
-	2: bond_meta::full_name theFullName;
-	3: string a = "a";
+    2: bond_meta::full_name theFullName;
+    3: string a = "a";
 }
 
 struct DerivedWithMeta : WithMeta
 {
     1: bond_meta::full_name anotherName;
-	2: string b = "b";
+    2: string b = "b";
 }
 
 struct WithConflictingMeta
 {
     1: string name = "Foo";
-	2: string fullName = "Bar";
-	3: bond_meta::full_name meta;
+    2: string fullName = "Bar";
+    3: bond_meta::full_name meta;
 }

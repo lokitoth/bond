@@ -22,7 +22,7 @@ Basic example
 =============
 
 In Bond data schemas are defined using idl-like 
-[syntax](bond_cpp.html#idl-syntax):
+[syntax](compiler.html#idl-syntax):
 
     namespace Examples
 
@@ -53,7 +53,7 @@ Binary](bond_cpp.html#compact-binary) protocol:
         {
             static void Main()
             {
-                var src = new Example
+                var src = new Record
                 {
                     Name = "FooBar",
                     Constants = { 3.14, 6.28 }
@@ -70,7 +70,7 @@ Binary](bond_cpp.html#compact-binary) protocol:
                 var input = new InputBuffer(output.Data);
                 var reader = new CompactBinaryReader<InputBuffer>(input);
 
-                var dst = Deserialize<Example>.From(reader);
+                var dst = Deserialize<Record>.From(reader);
             }
         }
     }
@@ -78,12 +78,33 @@ Binary](bond_cpp.html#compact-binary) protocol:
 Code generation
 ===============
 
-In order to use a Bond schema in a C# program, it needs to be compiled using 
-the Bond compiler [`gbc`](gbc.html). The compiler generates C# classes that 
-represent the schema. By default schema fields are represented by public 
-auto-properties initialized in the default constructor. Code generation can be 
-customized by passing one or more of the following command line options to 
-`gbc`:
+In order to use a Bond schema in a C# program, it needs to be compiled using the
+Bond compiler [`gbc`](compiler.html). The compiler generates C# classes that
+represent the schema. By default schema fields are represented by public
+auto-properties initialized in the default constructor.
+
+The mapping between Bond and C# type systems is mostly obvious but it is worth
+noting that unlike C# reference types, Bond types are not nullable. This means,
+for a example, that while `string` in Bond IDL will be mapped to C# `string`,
+which is a reference type, the value `null` will not be valid. In order to allow
+`null` value a types must be declared as
+[`nullable`](bond_cpp.html#nullable-types), e.g.:
+
+    struct Foo
+    {
+        0: list<nullable<string>> listOfNullableStrings;
+    }
+
+The value `null` is also legal for fields declared in Bond IDL to have a [default
+of `nothing`](bond_cpp.html#default-value-of-nothing), e.g.:
+
+    struct Bar
+    {
+        0: string str = nothing;
+    }
+
+Code generation can be customized by passing one or more of the following
+command line options to `gbc`:
 
 `--fields` 
 
@@ -263,7 +284,7 @@ known at compile-time:
     // transcoding w/o schema
     Transcode.FromTo(reader, writer);
 
-    // transcodign with compile-time schema Foo
+    // transcoding with compile-time schema Foo
     Transcode<Foo>.FromTo(reader, writer);
 
 When an application calls this API for the first time, a static instance of 
@@ -285,7 +306,7 @@ The input and output for binary protocols is provided by `IInputStream` and
 interfaces for memory buffers and `System.IO.Stream`, and applications can 
 provide their own custom implementations.
 
-The `OutputBuffer` class implements `IOutputBuffer` interface on top of 
+The `OutputBuffer` class implements `IOutputStream` interface on top of 
 a memory buffer. It comes in two variants. `Bond.IO.Safe.OutputBuffer` uses 
 only safe managed code and is included in `Bond.dll` assembly which is 
 compatible with Portable Class Library. `Bond.IO.Unsafe.OutputBuffer` uses 
@@ -437,6 +458,16 @@ how to achieve the best performance.
     will provide significantly better performance than `InputStream` and 
     `OutputStream` used together with `System.MemoryStream`.
 
+    `OutputBuffer` by default preallocates 64 KB of memory. When serializing small 
+    objects the cost of allocating and zeroing the memory may dominate the actual 
+    cost of serialization. Conversely, when serializing very large objects the 
+    initial buffer of 64KB may be too small, leading to unnecessary reallocations 
+    and memory copying.
+
+    The `OutputBuffer` constructor accepts an argument specifying the size of 
+    initial buffer in bytes. For optimal performance the size should be set to be 
+    a little bigger than expect size of serialized data.
+
 3. Prefer `using Bond.IO.Unsafe;` over `using Bond.IO.Safe;`
 
     Bond defines two variants of `InputBuffer` and `OutputBuffer` in two 
@@ -456,6 +487,18 @@ how to achieve the best performance.
     ```
     buffer.Position = 0;
     ```
+5. Choose the right protocol
+
+    The Fast Binary protocol is a little faster than Compact Binary, although the
+    difference is not big. Untagged protocols like Simple Binary can provide much
+    better performance (up to 4 times faster for some schemas). They are most
+    applicable in scenarios where runtime schema of the data is available during
+    deserialization and the same schema applies to many instances of the data, so
+    that the cost of creating the [`Deserializer`](#deserializer) can be
+    amortized. The canonical use case for an untagged protocol is record-based
+    data storage.
+
+6. Using .NET 4.5 will give better performance than 4.0.
 
 Runtime schema
 ==============
@@ -491,6 +534,9 @@ or from any embedded `TypeDef`:
 de/serialized like any other Bond type:
 
     Serialize.To(writer, Schema<T>.RuntimeSchema.SchemaDef);
+
+A serialized representation of `SchemaDef` can be also obtained directly from
+a schema definition IDL file using [bond compiler](compiler.html#runtime-schema).
 
 See also the following example:
 
@@ -639,7 +685,7 @@ using the `DateTime` class and serialized as `int64`.
 
 Defining a custom type mapping involves three steps:
 
-- Define a [type alias](.\bond_cpp.html#type-aliases) in the schema.
+- Define a [type alias](compiler.html#type-aliases) in the schema.
 - Specify during codegen a C# type to represent the alias.
 - Implement an appropriate converter for the custom C# type.
 
@@ -647,7 +693,7 @@ Codegen parameters
 ------------------
 
 When generating code for a schema that uses [type 
-aliases](./bond_cpp.html#type-aliases), the user can specify a custom type to 
+aliases](compiler.html#type-aliases), the user can specify a custom type to 
 represent each alias in the generated code:
 
     gbc c# --using="DateTime=System.DateTime" date_time.bond
@@ -760,7 +806,7 @@ the containing structs.
 Using Xml namespace inherently limits some of flexibility of Bond 
 deserialization. In particular a document with namespaces can't be deserialized 
 into a schema that is compatible but has a different name, for example 
-a [view](bond_cpp.html#struct-views) of the payload schema.
+a [view](compiler.html#struct-views) of the payload schema.
 
 See also the following example:
 
@@ -885,7 +931,7 @@ represent schema fields and thus are not decorated with Bond attributes.
 ### RequiredAttribute ###
 
 By default fields of Bond schemas are optional. [Required 
-fields](./bond_cpp.html#required-fields) must be marked with the `Required` 
+fields](bond_cpp.html#required-fields) must be marked with the `Required` 
 attribute.
 
     /* Bond schema
@@ -932,11 +978,12 @@ the uses for the `Type` is resolving such ambiguities.
     }
 
 Bond defines the following tag types that can be used in a `Type` attribute:
-    - `nullable`: specifies that a reference or nullable C# type represents 
-      a *nullable* type in the Bond type system. 
-    - `wstring`: specifies that a string is UTF16 (i.e. `wstring` in the Bond 
-      type system).
-    - `blob`: specifies that the type represents the schema type `blob`. 
+
+- `nullable`: specifies that a reference or nullable C# type represents 
+  a *nullable* type in the Bond type system. 
+- `wstring`: specifies that a string is UTF16 (i.e. `wstring` in the Bond 
+  type system).
+- `blob`: specifies that the type represents the schema type `blob`. 
 
 The `Type` attribute can also be used to specify type of object to be created 
 during deserialization when a field/property type is an interface.
@@ -1072,11 +1119,16 @@ public constructors:
 References
 ==========
 
+[Bond compiler reference][compiler]
+---------------------------
+
 [C++ User's Manual][bond_cpp]
 ---------------------------
 
 [Python User's Manual][bond_py]
 ----------------------------
+
+[compiler]: compiler.html
 
 [bond_py]: bond_py.html
 

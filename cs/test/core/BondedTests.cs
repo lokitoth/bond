@@ -2,13 +2,13 @@
 {
     using System;
     using System.IO;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using NUnit.Framework;
     using Bond;
     using Bond.Protocols;
     using Bond.IO;
     using Bond.IO.Unsafe;
 
-    [TestClass]
+    [TestFixture]
     public class BondedTests
     {
         // Deserialize T from IBonded<T> containing an instance or payload of derived class.
@@ -21,6 +21,8 @@
             IBonded<T> bondedInstance = new Bonded<D>(from);
             IBonded<T> bondedPayloadCB = Util.MakeBondedCB(from);
             IBonded<T> bondedPayloadSP = Util.MakeBondedSP(from);
+            IBonded<BondClass<IBonded<T>>> nestedBonded =
+                new Bonded<BondClass<IBonded<T>>>(new BondClass<IBonded<T>> { field = bondedInstance });
 
             for (var i = 2; --i != 0;)
             {
@@ -31,6 +33,7 @@
                 Assert.IsTrue(to1.IsEqual<T>(from));
                 Assert.IsTrue(to2.IsEqual<T>(from));
                 Assert.IsTrue(to3.IsEqual<T>(from));
+                Assert.IsTrue(nestedBonded.Deserialize().field.Deserialize().IsEqual(from));
             }
         }
 
@@ -295,7 +298,7 @@
                 Util.DeserializeXml<BondClass<To, double>>);
         }
 
-        [TestMethod]
+        [Test]
         public void BondedInterface()
         {
             BondedDeserialize<Nested, Derived>();
@@ -303,7 +306,7 @@
             BondedSerialize<Nested, Derived>();
         }
 
-        [TestMethod]
+        [Test]
         public void LazyDeserialize()
         {
             LazyDeserializationAll<BasicTypes, BasicTypes>();
@@ -312,7 +315,7 @@
             LazyDeserializationAll<Derived, DerivedView>();
         }
 
-        [TestMethod]
+        [Test]
         public void NonLazyDeserialize()
         {
             NonLazyDeserializationAll<BasicTypes, BasicTypes>();
@@ -321,7 +324,7 @@
             NonLazyDeserializationAll<Derived, DerivedView>();
         }
 
-        [TestMethod]
+        [Test]
         public void PolymorphicDeserialize()
         {
             PolymorphicDeserializationAll<Derived, Nested, Derived>();
@@ -332,7 +335,7 @@
             PolymorphicDeserializationAll<DerivedView, EmptyBase, Nested>();
         }
 
-        [TestMethod]
+        [Test]
         public void Passthrough()
         {
             PassthroughAll<BasicTypes, BasicTypes, BasicTypes>();
@@ -342,7 +345,7 @@
             PassthroughAll<Derived, EmptyBase, Nested>();
         }
 
-        [TestMethod]
+        [Test]
         public void BondedEquals()
         {
             var obj1 = new StructWithBonded();
@@ -359,7 +362,7 @@
             Assert.IsFalse(Comparer.Equal(obj1, obj2));
         }
 
-        [TestMethod]
+        [Test]
         public void SerializeBonded()
         {
             var obj = new StructWithBonded();

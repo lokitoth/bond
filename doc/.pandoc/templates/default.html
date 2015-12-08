@@ -11,33 +11,54 @@ $if(date-meta)$
   <meta name="date" content="$date-meta$" />
 $endif$
   <title>$if(title-prefix)$$title-prefix$ - $endif$$if(pagetitle)$$pagetitle$$endif$</title>
-$if(highlighting-css)$
   <style type="text/css">
+$if(highlighting-css)$
 $highlighting-css$
+$endif$
   body {
       line-height: 1.5; 
       font-family: Helvetica, Arial, sans-serif; 
       color: #333333;
-      font-size: 0.9em;
+      font-size: 1em;
   }
   code {
       font-size: 1em;
+      font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace, serif;
   }
   td.lineNumbers { width: 40px; }
   div#all {
-    width: 1120px;
+    max-width: 1120px;
     background-color: #ffffff;
     margin: 0 auto;
     padding: 25px;
     overflow: auto;
   }
+  code > span.kw { color: #204a87; font-weight: normal; } /* Keyword */  
   code > span.co { color: #4E9A06; font-style: normal; }
   code > span.st { color: #8A0303; font-style: normal; }
+  code > span.cf { color: #204a87; font-weight: normal; } /* ControlFlow */
+  code > span.op { color: #000000; font-weight: normal; } /* Operator */
+  code > span.pp { color: #8f5902; font-style: normal; } /* Preprocessor */
+  code > span.ex { } /* Extension */
+  code > span.at { color: #c4a000; } /* Attribute */
+  code > span.do { color: #8f5902; font-weight: normal; font-style: normal; } /* Documentation */
+  code > span.an { color: #8f5902; font-weight: normal; font-style: normal; } /* Annotation */
+  code > span.cv { color: #8f5902; font-weight: normal; font-style: normal; } /* CommentVar */
+  code > span.in { color: #8f5902; font-weight: normal; font-style: normal; } /* Information */
 
   h1, h2, h3, h4, h5, h6 {
     font-weight: normal;
     border-bottom: 1px solid black;
   }
+
+  div.sourceCode {
+    overflow-x: auto;
+    max-height: 620px;
+  }
+
+  table.sourceCode { 
+    line-height: 120%;
+  } 
 
   #toc {
     width: 300px; 
@@ -47,8 +68,9 @@ $highlighting-css$
   }
 
   #main {
-    float: right;
-    width: 800px;
+    margin-left: 320px;  
+    margin-rigth: auto;
+    max-width: 800px;
   }
   a {
     text-decoration: none;
@@ -62,8 +84,16 @@ $highlighting-css$
   a:link {
     color: #36c;
   }
+  @media screen and (max-width: 979px){
+  #main {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  #toc {
+    left: -300px; 
+  }
+  }
   </style>
-$endif$
 $for(css)$
   <link rel="stylesheet" href="$css$" $if(html5)$$else$type="text/css" $endif$/>
 $endfor$
@@ -73,6 +103,16 @@ $endif$
 $for(header-includes)$
   $header-includes$
 $endfor$
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-58775439-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
 </head>
 <body>
 <nav id="TOC"/>

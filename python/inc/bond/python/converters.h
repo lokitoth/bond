@@ -3,12 +3,14 @@
 
 #pragma once
 
+#if defined(_MSC_VER)
 // Disable warnings in boost::python
-#pragma warning (push)
-#pragma warning (disable : 4512 4127 4244 4100 4121 4267)
+#   pragma warning (push)
+#   pragma warning (disable : 4512 4127 4244 4100 4121 4267)
 
-#if defined(_MSC_VER) && _MSC_VER < 1800
-#   define HAVE_ROUND
+#   if _MSC_VER < 1800
+#       define HAVE_ROUND
+#   endif
 #endif
 
 #include <boost/python/module.hpp>
@@ -17,7 +19,9 @@
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <boost/python/suite/indexing/map_indexing_suite.hpp>
 
-#pragma warning (pop)
+#if defined(_MSC_VER)
+#   pragma warning (pop)
+#endif
 
 #include "list_indexing_suite.h"
 #include "set_indexing_suite.h"
@@ -31,10 +35,25 @@ namespace python
 {
 
 
+template <typename T> struct
+has_custom_converter
+    : std::false_type
+{};
+
+template <typename T> struct
+has_custom_converter<bond::nullable<T>>
+    : std::true_type
+{};
+
+template <> struct
+has_custom_converter<bond::blob>
+    : std::true_type
+{};
+
 // Convert Bond type name to a valid python identifier
 class pythonic_name
 {
-public:    
+public:
     template <typename T>
     pythonic_name()
         : _name(bond::detail::type<T>::name())
@@ -118,7 +137,8 @@ static PyObject* identity_unaryfunc(PyObject* x)
     return x;
 }
 
-unaryfunc py_object_identity = identity_unaryfunc;
+
+static unaryfunc py_object_identity = identity_unaryfunc;
 
 
 // Conversion policy from Python list to a list container
@@ -129,7 +149,7 @@ struct list_container_from_python_list
     static unaryfunc* convertible(PyObject* obj)
     {
         return (PyList_Check(obj)) ? &py_object_identity : 0;
-    };
+    }
 
     static void extract(T& dst, const boost::python::object& src)
     {
@@ -181,12 +201,19 @@ extend_map(Map& map, const boost::python::object& obj)
     typedef typename Map::value_type value_type;
 
     BOOST_ASSERT(PyDict_Check(obj.ptr()));
-    
+
     dict dict(obj);
-        
+
+    const auto keys =
+#if PY_VERSION_HEX >= 0x03000000
+        dict.keys();
+#else
+        dict.iterkeys();
+#endif
+
     BOOST_FOREACH(object k,
         std::make_pair(
-            stl_input_iterator<object>(dict.iterkeys()),
+            stl_input_iterator<object>(keys),
             stl_input_iterator<object>()
             ))
     {
@@ -211,7 +238,7 @@ extend_map(Map& map, const boost::python::object& obj)
                 }
             }
         }
-        
+
         PyErr_SetString(PyExc_TypeError, "Incompatible Data Type");
         throw_error_already_set();
     }
@@ -247,7 +274,7 @@ extend_set(T& set, const boost::python::object& obj)
 {
     using namespace boost::python;
     typedef typename T::value_type data_type;
-        
+
     BOOST_FOREACH(object elem,
         std::make_pair(
             stl_input_iterator<object>(obj),
@@ -274,7 +301,7 @@ extend_set(T& set, const boost::python::object& obj)
                 throw_error_already_set();
             }
         }
-    }          
+    }
 }
 
 
@@ -303,26 +330,51 @@ struct rvalue_set_container_from_python
 
 // Conversion policy for bond::blob
 struct blob_converter
+#if PY_VERSION_HEX >= 0x03000000
+    : boost::python::converter::wrap_pytype<&PyBytes_Type>
+#else
     : boost::python::converter::wrap_pytype<&PyString_Type>
+#endif
 {
-    // Conversion from Python string to bond::blob
+    // Conversion from Python2 string or Python3 bytes to bond::blob
     static unaryfunc* convertible(PyObject* obj)
     {
+#if PY_VERSION_HEX >= 0x03000000
+        return (PyBytes_Check(obj)) ? &py_object_identity : 0;
+#else
         return (PyString_Check(obj)) ? &obj->ob_type->tp_str : 0;
-    };
+#endif
+    }
 
     static void extract(bond::blob& dst, const boost::python::object& src)
     {
+#if PY_VERSION_HEX >= 0x03000000
+        boost::shared_ptr<void> hold_convertible_ref_count(
+            (void*)0,
+            boost::python::converter::shared_ptr_deleter(
+                boost::python::handle<>(boost::python::borrowed(src.ptr()))));
+        boost::shared_ptr<char[]> bytes(
+            hold_convertible_ref_count,
+            PyBytes_AsString(src.ptr()));
         dst.assign(
-            boost::python::extract<boost::shared_ptr<char> >(src)(), 
+            bytes,
+            static_cast<uint32_t>(PyBytes_Size(src.ptr())));
+#else
+        dst.assign(
+            boost::python::extract<boost::shared_ptr<char> >(src)(),
             static_cast<uint32_t>(PyString_Size(src.ptr())));
+#endif
     }
 
-    // Conversion from bond::blob to Python string 
+    // Conversion from bond::blob to Python2 string or Python3 bytes
     static PyObject* convert(const bond::blob& blob)
     {
+#if PY_VERSION_HEX >= 0x03000000
+        return PyBytes_FromStringAndSize(blob.content(), blob.length());
+#else
         return boost::python::incref(
             boost::python::str(blob.content(), blob.length()).ptr());
+#endif
     }
 };
 
@@ -338,13 +390,13 @@ struct nullable_maybe_converter
     {
         if (obj == Py_None)
             return &py_object_identity;
-        
+
         const auto* reg = boost::python::converter::registry::query
             (typeid(typename T::value_type));
 
         if (reg && reg->m_class_object == Py_TYPE(obj))
             return &py_object_identity;
-        
+
         if (reg && reg->rvalue_chain)
             return static_cast<unaryfunc*>(reg->rvalue_chain->convertible(obj));
 
@@ -363,7 +415,7 @@ struct nullable_maybe_converter
         else
         {
             boost::python::extract<typename T::value_type> value(src);
-            
+
             if (value.check())
             {
                 dst = T(static_cast<typename T::value_type>(value));
@@ -387,7 +439,7 @@ struct nullable_maybe_converter
 };
 
 
-void register_builtin_convereters()
+inline void register_builtin_converters()
 {
     static bool registered;
 
@@ -396,7 +448,7 @@ void register_builtin_convereters()
         using namespace boost::python;
 
         rvalue_from_python<
-            bond::blob, 
+            bond::blob,
             blob_converter
             >();
 

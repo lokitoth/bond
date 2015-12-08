@@ -61,7 +61,7 @@ namespace Bond.Expressions
                 {
                     body = Expression.Block(
                         new[] { parser.ReaderParam },
-                        Expression.Assign(parser.ReaderParam, parser.ReaderValue),
+                        Expression.Assign(parser.ReaderParam, Expression.Convert(parser.ReaderValue, parser.ReaderParam.Type)),
                         body);
                 }
             }
@@ -100,6 +100,10 @@ namespace Bond.Expressions
         readonly ProtocolWriter<W> writer = new ProtocolWriter<W>();
         readonly Dictionary<RuntimeSchema, Serialize> serializeDelegates = 
             new Dictionary<RuntimeSchema, Serialize>(new TypeDefComparer());
+        static readonly bool untaggedWriter =
+            typeof (IUntaggedProtocolReader).IsAssignableFrom(typeof (W).GetAttribute<ReaderAttribute>().ReaderType);
+        static readonly bool binaryWriter = untaggedWriter
+            || typeof(ITaggedProtocolReader).IsAssignableFrom(typeof(W).GetAttribute<ReaderAttribute>().ReaderType);
 
         public SerializerTransform(Expression<Action<R, W, int>> deferredSerialize, RuntimeSchema schema)
             : base(deferredSerialize)
@@ -138,7 +142,7 @@ namespace Bond.Expressions
             {
                 serialize = serializeDelegates[schema] = p => serializeWithSchema(p, schema);
             }
-            // Tanscoding from tagged protocol with runtime schema generates enormous expression tree
+            // Transcoding from tagged protocol with runtime schema generates enormous expression tree
             // and for large schemas JIT fails to compile resulting lambda (InvalidProgramException).
             // As a workaround we don't inline nested serialize expressions in this case.
             var inline = !typeof(ITaggedProtocolReader).IsAssignableFrom(parser.ReaderParam.Type);
@@ -211,6 +215,14 @@ namespace Bond.Expressions
                             Expression.Equal(elementType, Expression.Constant(BondDataType.BT_INT8)),
                             writer.WriteBytes(blob),
                             body);
+
+                        // For binary protocols we can write blob directly using protocols's WriteBytes
+                        // even if the container is not a blob (blob is BT_LIST of BT_INT8).
+                        if (binaryWriter)
+                            body = PrunedExpression.IfThenElse(
+                                Expression.Equal(elementType, Expression.Constant(BondDataType.BT_UINT8)),
+                                writer.WriteBytes(blob),
+                                body);
                     }
 
                     return Expression.Block(
@@ -304,7 +316,7 @@ namespace Bond.Expressions
         {
             Debug.Assert(schema.HasValue);
 
-            if (parser.IsBonded)
+            if (parser.IsBonded || (untaggedWriter && schema.IsBonded))
                 return parser.Bonded(writer.WriteBonded);
 
             if (schema.IsStruct)

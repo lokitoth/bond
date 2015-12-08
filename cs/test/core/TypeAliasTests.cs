@@ -3,8 +3,80 @@
     using System;
     using System.Collections.Generic;
     using Bond;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using NUnit.Framework;
     using System.Linq;
+
+    public class Lazy<T> : IBonded<T>
+    {
+        readonly IBonded<T> bonded;
+        T instance;
+
+        public Lazy()
+        {
+            bonded = Bonded<T>.Empty;
+        }
+
+        public Lazy(IBonded bonded)
+        {
+            this.bonded = bonded.Convert<T>();
+        }
+
+        public Lazy(T instance)
+        {
+            this.instance = instance;
+            this.bonded = new Bonded<T>(instance);
+        }
+
+        public T Value
+        {
+            get
+            {
+                if (instance == null)
+                    instance = bonded.Deserialize();
+                return instance;
+            }
+        }
+
+        public T Deserialize()
+        {
+            return bonded.Deserialize();
+        }
+
+        public void Serialize<W>(W writer)
+        {
+            bonded.Serialize(writer);
+        }
+
+        public U Deserialize<U>()
+        {
+            return bonded.Deserialize<U>();
+        }
+
+        public IBonded<U> Convert<U>()
+        {
+            return bonded.Convert<U>();
+        }
+
+        public static bool operator ==(Lazy<T> left, Lazy<T> right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(Lazy<T> left, Lazy<T> right)
+        {
+            return !(left == right);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Comparer.Equal(Value, (obj as Lazy<T>).Value);
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+    }
 
     public static class BondTypeAliasConverter
     {
@@ -22,12 +94,24 @@
             Buffer.BlockCopy(bits, 0, data, 0, data.Length);
             return new ArraySegment<byte>(data);
         }
+
+        public static byte[] Convert(ArraySegment<byte> value, byte[] unused)
+        {
+            var arr = new byte[value.Count];
+            Buffer.BlockCopy(value.Array, value.Offset, arr, 0, value.Count);
+            return arr;
+        }
+
+        public static ArraySegment<byte> Convert(byte[] value, ArraySegment<byte> unused)
+        {
+            return new ArraySegment<byte>(value);
+        }
     }
 
-    [TestClass]
+    [TestFixture]
     public class TypeAliasTests
     {
-        [TestMethod]
+        [Test]
         public void GenericTypeAlias()
         {
             var from = UnitTest.Random.Init<GenericAlias>();
@@ -41,14 +125,14 @@
             TestTypeAliases(from);
         }
         
-        [TestMethod]
+        [Test]
         public void AliasContainer()
         {
             var from = UnitTest.Random.Init<ContainerAlias>();
             TestTypeAliases<ContainerAlias, ContainerNotAliased>(from);
         }
 
-        [TestMethod]
+        [Test]
         public void ArrayResize()
         {
             // Generate an array so that it has to be resized twice when we
@@ -79,7 +163,7 @@
             TestTypeAliases<ContainerAlias, ContainerNotAliased>(data);
         }
 
-        [TestMethod]
+        [Test]
         public void AliasBlob()
         {
             var from = InitBlobAlias();
@@ -87,7 +171,21 @@
             TestTypeAliases<BlobAlias, BlobNotAliased>(from);
         }
 
-        [TestMethod]
+        [Test]
+        public void AliasBonded()
+        {
+            var from = new BondedAlias {lazy = new Lazy<Foo>(UnitTest.Random.Init<Foo>())};
+            TestTypeAliases(from);
+        }
+
+        [Test]
+        public void AliasGenericBonded()
+        {
+            var from = new GenericBondedAlias<Foo> { lazy = new Lazy<Foo>(UnitTest.Random.Init<Foo>()) };
+            TestTypeAliases(from);
+        }
+
+        [Test]
         public void AliasesInField()
         {
             var from = new FieldOfStructWithAliases
@@ -98,7 +196,7 @@
             TestTypeAliases(from);
         }
 
-        [TestMethod]
+        [Test]
         public void AliasesInContainer()
         {
             var from = new ContainerOfStructWithAliases
@@ -108,7 +206,7 @@
             TestTypeAliases(from);
         }
 
-        [TestMethod]
+        [Test]
         public void AliasesInBase()
         {
             var from = new BaseWithAliases
@@ -120,7 +218,7 @@
             TestTypeAliases(from);
         }
 
-        [TestMethod]
+        [Test]
         public void AliasesInNested()
         {
             var from = new NestedWithAliases

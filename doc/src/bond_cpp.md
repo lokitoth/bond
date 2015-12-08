@@ -21,7 +21,7 @@ Bond is published on GitHub at [https://github.com/Microsoft/bond/](https://gith
 Basic example
 =============
 
-In Bond data schemas are defined using idl-like [syntax](#idl-syntax):
+In Bond data schemas are defined using idl-like [syntax](compiler.html#idl-syntax):
 
     namespace example
 
@@ -32,7 +32,7 @@ In Bond data schemas are defined using idl-like [syntax](#idl-syntax):
     }
 
 In order to use the schema in a C++ program, it needs to be compiled using the
-Bond compiler [`gbc`](gbc.html). This step is sometimes also referred to as 
+Bond compiler [`gbc`](compiler.html). This step is sometimes also referred to as 
 code generation (or codegen) because the compilation generates C++ code 
 corresponding to the schema definition.
 
@@ -346,6 +346,9 @@ efficient way to achieve this. In order to encourage this, the
 constructable from `boost::shared_ptr<SchemaDef>` but only explicitly from 
 `const SchemaDef&`. 
 
+A serialized representation of `SchemaDef` can be also obtained directly from
+a schema definition IDL file using [bond compiler](compiler.html#runtime-schema).
+
 See example: `examples/cpp/core/runtime_schema`.
 
 Compile-time schema
@@ -410,7 +413,7 @@ class][bonded_reference]:
 
 The class template has two parameters. The first one, `T`, represents schema 
 (or type) of the data. Usually it is a struct defined via Bond 
-[IDL](#idl-syntax) but it can also be `void` (see 
+[IDL](compiler.html#idl-syntax) but it can also be `void` (see 
 [`bonded<void>`][bonded_void_reference]) if we want to work with data for which 
 schema is not known at compile-time. The second parameter, `Reader`, specifies 
 representation of the data. The default, `ProtocolReader` is a variant type 
@@ -666,45 +669,46 @@ Bonus explainer: parallels between `bonded<T>` and C++ pointers
 The rules of casting and slicing that apply to `bonded<T>` are by design very 
 similar to the standard C++ rules for pointers:
 
-+------------------------------+---------------------------------------------+--------------------------------------+
-|                              | bonded\<T\>                                 | C++ pointer                          |
-+==============================+=============================================+======================================+
-|                              | ```cpp                                      | ```cpp                               |
-| Slicing to base              | bonded<Derived> b;                          | Derived* p;                          |
-|                              | Base obj;                                   | Base obj;                            |
-|                              | b.Deserialize(obj);                         | obj = *p;                            |
-|                              | ```                                         | ```                                  |
-+------------------------------+---------------------------------------------+--------------------------------------+
-|                              | ```cpp                                      | ```cpp                               |
-| Assigning to base part       | bonded<Base> b;                             | Base* p;                             |
-|                              | Derived obj;                                | Derived obj;                         |
-|                              | b.Deserialize(obj);                         | static_cast<Base&>(obj) = *p;        |
-|                              | ```                                         | ```                                  |
-+------------------------------+---------------------------------------------+--------------------------------------+
-|                              | ```cpp                                      | ```cpp                               |
-| Implicit up-casting          | void foo(bonded<Base>);                     | void foo(Base*)                      |
-|                              | bonded<Derived> b;                          | Derived* p;                          |
-|                              | foo(b);                                     | foo(p);                              |
-|                              | ```                                         | ```                                  |
-+------------------------------+---------------------------------------------+--------------------------------------+
-|                              | ```cpp                                      | ```cpp                               |
-| Explicit down-casting        | bonded<Base> b;                             | Base* p;                             |
-|                              | Derived obj;                                | Derived obj;                         |
-|                              | bonded<Derived>(b).Deserialize(obj);        | obj = *static_cast<Derived*>(p);     |
-|                              | ```                                         | ```                                  |
-+------------------------------+---------------------------------------------+--------------------------------------+
-|                              | ```cpp                                      | ```cpp                               |
-| Implicit cast to void        | void foo(bonded<void>);                     | void foo(void*);                     |
-|                              | bonded<Bar> b;                              | Bar* p;                              |
-|                              | foo(b);                                     | foo(p);                              |
-|                              | ```                                         | ```                                  |
-+------------------------------+---------------------------------------------+--------------------------------------+
-|                              | ```cpp                                      | ```cpp                               |
-| Explicit cast from void      | bonded<void> b(data, schema);               | void* p = &obj                       |
-|                              | bonded<Bar> bb;                             | Bar* pp;                             |
-|                              | bb = bonded<Bar>(b);                        | pp = static_cast<Bar*>(p);           |
-|                              | ```                                         | ```                                  |
-+------------------------------+---------------------------------------------+--------------------------------------+
++---------------------------+---------------------------------+-----------------------------------+
+|                           | bonded\<T\>                     | C++ pointer                       |
++===========================+=================================+===================================+
+|                           | ```cpp                          | ```cpp                            |
+| Slicing to base           | bonded<Derived> b;              | Derived* p;                       |
+|                           | Base obj;                       | Base obj;                         |
+|                           | b.Deserialize(obj);             | obj = *p;                         |
+|                           | ```                             | ```                               |
++---------------------------+---------------------------------+-----------------------------------+
+|                           | ```cpp                          | ```cpp                            |
+| Assigning to base part    | bonded<Base> b;                 | Base* p;                          |
+|                           | Derived obj;                    | Derived obj;                      |
+|                           | b.Deserialize(obj);             | static_cast<Base&>(obj) = *p;     |
+|                           | ```                             | ```                               |
++---------------------------+---------------------------------+-----------------------------------+
+|                           | ```cpp                          | ```cpp                            |
+| Implicit up-casting       | void foo(bonded<Base>);         | void foo(Base*)                   |
+|                           | bonded<Derived> b;              | Derived* p;                       |
+|                           | foo(b);                         | foo(p);                           |
+|                           | ```                             | ```                               |
++---------------------------+---------------------------------+-----------------------------------+
+|                           | ```cpp                          | ```cpp                            |
+| Explicit down-casting     | bonded<Base> b;                 | Base* p;                          |
+|                           | Derived obj;                    | Derived obj;                      |
+|                           | bonded<Derived>(b)              | obj = *static_cast<Derived*>(p);  |
+|                           |     .Deserialize(obj);          |                                   |
+|                           | ```                             | ```                               |
++---------------------------+---------------------------------+-----------------------------------+
+|                           | ```cpp                          | ```cpp                            |
+| Implicit cast to void     | void foo(bonded<void>);         | void foo(void*);                  |
+|                           | bonded<Bar> b;                  | Bar* p;                           |
+|                           | foo(b);                         | foo(p);                           |
+|                           | ```                             | ```                               |
++---------------------------+---------------------------------+-----------------------------------+
+|                           | ```cpp                          | ```cpp                            |
+| Explicit cast from void   | bonded<void> b(data, schema);   | void* p = &obj                    |
+|                           | bonded<Bar> bb;                 | Bar* pp;                          |
+|                           | bb = bonded<Bar>(b);            | pp = static_cast<Bar*>(p);        |
+|                           | ```                             | ```                               |
++---------------------------+---------------------------------+-----------------------------------+
 
 
 Merge
@@ -979,8 +983,7 @@ A transform class has to implement the following concept:
         template <typename T>
         bool UnknownField(uint16_t id, T& value) const;
 
-        bool OmittedField(uint16_t id, const bond::Metadata& metadata,
-            bond::BondDataType type) const;
+        bool OmittedField(uint16_t id, const bond::Metadata& metadata, bond::BondDataType type) const;
 
         // Only serializing transforms
         template <typename T>
@@ -1165,277 +1168,6 @@ See examples:
 - `examples/cpp/core/simple_json`
 
 
-IDL syntax
-==========
-
-A Bond schema definition file can contain the following elements:
-
-- Import statements
-- Namespace definition
-- Forward declarations
-- Definitions
-    - enum
-    - forward declaration
-    - struct
-    - generics
-    - struct view
-- Custom attributes
-- Comments
-
-
-Import statements
-------------------
-
-In order to use types defined in another schema definition file, the other file
-needs to be explicitly imported. Schema file can contain zero or more import
-statements and they must appear at the top of the file:
-
-    import "file.bond"
-
-The file being imported can be specified using a partial path which is resolved
-by Bond compiler relative to the directory containing the schema file being
-compiled and any import path(s) specified using the --import-dir option(s) 
-passed to gbc.
-
-See example: `examples/cpp/core/import`.
-
-Namespace definition
---------------------
-
-All schema types are always defined within a namespace. Namespace scope starts
-with namespace definition statement and ends at the end of the file.
-
-    namespace some.unique.name
-
-
-Enum definition
----------------
-
-Bond enums are very similar to C++ enums, both in semantics and syntax used to
-define them:
-
-    enum Protocols
-    {
-        TCP,
-        UDP = 10
-    }
-
-On the wire values of enums types are equivalent to 32-bit signed integers.
-
-
-Forward declaration
--------------------
-
-In order to define recursive schemas, such as trees, it may be necessary to
-declare a struct before it is defined. A forward declaration statement serves
-this purpose:
-
-    struct Node;
-
-Forward declared structs can be used in field declarations as the base type for
-nullable\<T\> and bonded\<T\> or the element type of a container.
-
-    struct Node;
-
-    struct Node
-    {
-        0: nullable<Node> left;
-        1: nullable<Node> right;
-    }
-
-
-Struct definition
------------------
-
-Struct definition consists of a struct name, an optional base struct, and zero 
-or more fields. 
-
-    struct Example : Base
-    {
-        0: uint32 fieldName = 10;
-    }
-
-Field definition consists of an ordinal, type, name and optional default value.
-Field type can be:
-
-- Basic type: `bool`, `uint8`, `uint16`, `uint32`, `uint64`, `int8`, `int16`,
-`int32`, `int64`, `float`, `double`, `string`, `wstring`.
-
-- Container: `blob`, `list<T>`, `vector<T>`, `set<T>`, `map<K, T>`,
-`nullable<T>`.
-
-- User-defined type: enum, struct or `bonded<T>` where T is a struct.
-
-An optional default value can be specified for fields of basic types. For 
-integers the default can be specified as either a decimal number or a 
-hexadecimal number prefixed with `0x`. The only explicit default value allowed 
-for containers is [`nothing`](#default-value-of-nothing). Enum fields must have 
-an explicit default value which must be one of the enum named constants.
-
-Names of structs and enums defined in another namespace must be qualified with 
-the namespace name:
-
-    import "bond/core/bond.bond"
-
-    namespace example
-
-    struct Example
-    {
-        0: bond.GUID id;
-        1: bond.BondDataType type = BT_UNAVAILABLE;
-    }
-
-Structs can be defined as sealed. Sealed structs can't be inherited from:
-
-    sealed struct Example
-    {
-    }
-
-Generics
---------
-
-Generic structs are parameterized with one or more type parameters which can be 
-used within the struct definition in any place where a concrete type could be 
-used (e.g. base struct, field type, container element type, parameter of a 
-generic struct).
-
-    struct Example<T1, T2> : T1
-    {
-        0: T1 field;
-        1: list<T2> list;
-        2: Generic<T2> generic;
-    }
-
-Usage of a type parameter within a generic struct definition may implicitly 
-constrain what type(s) can be used to instantiate the generic struct:
-
-    struct Example<T>
-    {
-        // The default value of 10 implicitly constrains T to numeric types
-        0: T x = 10;
-    }
-
-Using a type parameter in a [`nullable`](#nullable-types) or as the type of 
-a field with default value of [`nothing`](#default-value-of-nothing) constrains 
-the type parameter to be non-scalar type. If this is undesired then explicit 
-constraint to value type can be specified in the generic schema definition:
-
-    struct Example<T : value>
-    {
-        0: nullable<T> x;
-        1: T y = nothing;
-    }
-
-When instantiating a generic struct all type parameters must be concrete types. 
-Bond IDL doesn't support the equivalent of C++ template template parameters. 
-
-See examples:
-
-- `examples/cpp/core/generics`
-- `examples/cpp/core/generic_tree`
-
-
-Type aliases
-------------
-
-The syntax to define type aliases is very similar to C++:
-
-    using time = int64;
-    using array<T> = vector<T>;
-
-An alias can be used in any context where the aliased type could be used, 
-including a definition of another alias:
-
-    using times = array<time>;
-
-Type aliases can optionally be [mapped to custom types](#custom-type-mappings) 
-in the generated code.
-
-See examples:
-
-- `examples/cpp/core/time_alias`
-- `examples/cpp/core/multiprecision`
-- `examples/cpp/core/string_ref`
-- `examples/cpp/core/container_of_pointers`
-- `examples/cpp/core/static_array`
-
-Struct views
-------------
-
-A view definition is syntactic sugar to define a struct that has a subset of 
-the fields of another struct:
-
-    struct Example
-    {
-        0: int16 x;
-        1: string y;
-        2: list<bool> z;
-    }
-
-    struct View view_of Example
-    {
-        x,z;
-    }
-
-In the above example, the definition of `View` is equivalent to:
-
-    struct View
-    {
-        0: int16 x;
-        2: list<bool> z;
-    }
-
-A view of a generic struct is also a generic struct with the same number of 
-type parameters.
-
-A view of a sealed struct is always sealed. A view of non-sealed struct can be 
-defined to be sealed:
-
-    sealed struct View view_of Example
-    {
-        x,
-        z;
-    }
-
-See example: `examples/cpp/core/schema_view`
-
-
-Custom attributes
------------------
-
-Struct, enum and field definitions can be annotated with custom attributes 
-which are in effect name, string-values pairs:
-
-    [Validate("True")]
-    struct Example
-    {
-        [Max("100")]
-        0: uint32 value;
-    }
-
-Attributes are available in code generation templates and thus can be used to 
-drive custom code generation. They are also available to applications via 
-[compile-time](#compile-time-schema) and [runtime](#runtime-schema) schema, and
-as `Metadata` argument in [transforms](#transforms) and [protocols](#protocols).
-
-See example: `examples/cpp/core/attributes`
-
-
-Comments
---------
-
-Bond IDL supports C++ style comments:
-
-    /*
-        Multi-line 
-        comment
-    */
-    struct Example
-    {
-        // One line commet
-    }
-
-
 Custom type mappings
 ====================
 
@@ -1450,14 +1182,14 @@ represented using the `boost::posix_time::ptime` class and serialized as
 
 Defining a custom type mapping involves three steps:
 
-- Define a [type alias](#type-aliases) in the schema.
+- Define a [type alias](compiler.html#type-aliases) in the schema.
 - Specify during codegen a C++ type to represent the alias.
 - Implement an appropriate concept for the custom C++ type.
 
 Codegen parameters
 ------------------
 
-When generating code for a schema that uses [type aliases](#type-aliases), the 
+When generating code for a schema that uses [type aliases](compiler.html#type-aliases), the 
 user can specify a custom type to represent each alias in the generated code:
 
     gbc c++ --using="time=boost::posix_time::ptime" time.bond
@@ -1471,8 +1203,7 @@ Generated code using custom types usually has to include a header file with
 appropriate declarations. The `gbc` compiler supports the `--header` parameter 
 for that purpose:
 
-    gbc c++ --header="<time_alias.h>" --using="time=boost::posix_time::ptime" 
-    time.bond
+    gbc c++ --header="<time_alias.h>" --using="time=boost::posix_time::ptime" time.bond
 
 The above command will add the following statement at the top of the generated
 header file `time_types.h`:
@@ -1967,6 +1698,9 @@ References
 [C++ API reference][API_reference]
 ------------------------------
 
+[Bond compiler reference][compiler]
+---------------------------
+
 [C# User's Manual][bond_cs]
 ---------------------------
 
@@ -1974,6 +1708,8 @@ References
 ----------------------------
 
 [API_reference]: ../reference/cpp/index.html
+
+[compiler]: compiler.html
 
 [bond_py]: bond_py.html
 

@@ -124,6 +124,14 @@ namespace Bond
         }
 
         /// <summary>
+        /// Get a value indicating whether the Type is a Bond string
+        /// </summary>
+        public static bool IsBondString(this Type type)
+        {
+            return type == typeof(Tag.wstring) || type == typeof(string);
+        }
+
+        /// <summary>
         /// Get a value indicating whether the Type is a Bond blob
         /// </summary>
         public static bool IsBondBlob(this Type type)
@@ -324,6 +332,11 @@ namespace Bond
             return type.GetTypeInfo().IsClass;
         }
 
+        internal static bool IsValueType(this Type type)
+        {
+            return type.GetTypeInfo().IsValueType;
+        }
+
         static bool IsInterface(this Type type)
         {
             return type.GetTypeInfo().IsInterface;
@@ -341,6 +354,11 @@ namespace Bond
 
         static Type GetBaseType(this Type type)
         {
+            if (type.IsInterface())
+            {
+                return type.GetInterfaces().FirstOrDefault();
+            }
+
             return type.GetTypeInfo().BaseType;
         }
 
@@ -349,19 +367,28 @@ namespace Bond
             return type.GetTypeInfo().IsAssignableFrom(that.GetTypeInfo());
         }
 
-        internal static MethodInfo GetMethod(this Type type, string name, params Type[] paramTypes)
+        internal static MethodInfo FindMethod(this Type type, string name, params Type[] paramTypes)
         {
             var methods = type.GetDeclaredMethods(name);
 
-            return (
+            var result = (
                 from method in methods
                 let parameters = method.GetParameters()
                 where parameters != null
                 where parameters.Select(p => p.ParameterType).Where(t => !t.IsGenericParameter).SequenceEqual(paramTypes)
                 select method).FirstOrDefault();
+            
+            if (result == null)
+            {
+                var baseType = type.GetBaseType();
+                if (baseType != null)
+                    result = baseType.FindMethod(name, paramTypes);
+            }
+
+            return result;
         }
 
-        internal static MethodInfo FindMethod(this Type type, string name, params Type[] argumentTypes)
+        internal static MethodInfo ResolveMethod(this Type type, string name, params Type[] argumentTypes)
         {
             var methods = type.GetDeclaredMethods(name);
             var typeArgs = new Type[0];
@@ -399,7 +426,7 @@ namespace Bond
 
         internal static MethodInfo GetMethod(this Type type, Type declaringType, string name, params Type[] paramTypes)
         {
-            return declaringType.MakeGenericTypeFrom(type).GetMethod(name, paramTypes);
+            return declaringType.MakeGenericTypeFrom(type).FindMethod(name, paramTypes);
         }
 
         internal static ConstructorInfo GetConstructor(this Type type, params Type[] paramTypes)
@@ -410,6 +437,7 @@ namespace Bond
                 from method in methods
                 let parameters = method.GetParameters()
                 where parameters != null
+                where method.IsStatic == false
                 where parameters.Select(p => p.ParameterType).SequenceEqual(paramTypes)
                 select method).FirstOrDefault();
         }
@@ -887,16 +915,17 @@ namespace Bond
                         return null;
                     }
 
-                    if (schemaType.IsBondStruct() || schemaType.IsBondContainer())
+                    if (schemaType.IsBondStruct() || schemaType.IsBonded() || schemaType.IsBondContainer() || schemaType.IsBondBlob())
                     {
                         return Empty;
                     }
 
-                    throw new InvalidOperationException(string.Format(
-                        CultureInfo.InvariantCulture,
-                        "Default value for property {0}.{1} must be specified using the DefaultAttribute",
-                        schemaField.DeclaringType.Name,
-                        schemaField.Name));
+                    if (schemaType.IsBondString())
+                    {
+                        return string.Empty;
+                    }
+
+                    return Activator.CreateInstance(schemaField.MemberType);
                 }
             }
 

@@ -157,9 +157,10 @@ instead objects with two methods: `key()` and `data()`.
 Blob
 ----
 
-Bond `blob` is represented as Python string object. Initializing a `blob` from 
-a Python string does not involve memory copy, it just increases reference count 
-on the underlying Python object.
+Bond `blob` is represented as either a string object in Python2 or a bytes
+object in Python3. Initializing a `blob` from a Python object does not involve
+a memory copy; instead, the reference count on the underlying Python object is
+increased.
 
 Nullable and `nothing`
 ----------------------
@@ -278,7 +279,7 @@ The `Deserialize` and `Unmarshal` APIs take an optional argument of type
     data = example.Serialize(obj)
 
     # serialize to JSON
-    json = example.Serialize(obj, example.ProtocolType.PRETTY_JSON_PROTOCOL)
+    json = example.Serialize(obj, example.ProtocolType.SIMPLE_JSON_PROTOCOL)
 
     # marshal schema to Compact Binary
     data = example.Marshal(example.GetRuntimeSchema(obj))
@@ -295,6 +296,9 @@ The `Deserialize` and `Unmarshal` APIs take an optional argument of type
 References
 ==========
 
+[Bond compiler reference][compiler]
+---------------------------
+
 [C++ User's Manual][bond_cpp]
 -----------------------------
 
@@ -303,6 +307,8 @@ References
 
 [Boost Python][boost_python]
 ----------------------------
+
+[compiler]: compiler.html
 
 [bond_cpp]: bond_cpp.html
 

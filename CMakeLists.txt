@@ -22,10 +22,13 @@ include (PythonTest)
 
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -C ${CMAKE_CFG_INTDIR} --output-on-failure)
 
-add_subdirectory (compiler)
+add_subfolder (compiler "compiler")
 add_subdirectory (cpp)
+add_subfolder (doc "doc")
 add_python_subdirectory (python)
 add_subdirectory (examples)
+
+add_dependencies (check gbc-tests)
 
 install (DIRECTORY
     cpp/inc/bond

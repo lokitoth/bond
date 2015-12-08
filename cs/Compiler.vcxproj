@@ -29,9 +29,9 @@
           <Command>
 setlocal
 cd $(OutDir)
-cmake $(ProjectDir)\..\compiler -Wno-dev
+call cmake $(ProjectDir)\..\compiler -Wno-dev
 if %errorlevel% neq 0 goto :cmEnd
-cmake --build $(OutDir) --target compiler
+call cmake --build $(OutDir) --target gbc
 if %errorlevel% neq 0 goto :cmEnd
 copy $(OutDir)\build\gbc\gbc.exe $(ProjectDir)\bin\
 if %errorlevel% neq 0 goto :cmEnd
@@ -42,31 +42,35 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd
           </Command>
-      <AdditionalInputs>$(ProjectDir)..\compiler\gbc.cabal;$(ProjectDir)..\compiler\Main.hs;$(ProjectDir)..\compiler\Options.hs;$(ProjectDir)..\compiler\Bond\Lexer.hs;$(ProjectDir)..\compiler\Bond\Parser.hs;$(ProjectDir)..\compiler\Bond\Schema.hs;$(ProjectDir)..\compiler\Bond\Util.hs;$(ProjectDir)..\compiler\Bond\Version.hs;$(ProjectDir)..\compiler\Bond\Template\CustomMapping.hs;$(ProjectDir)..\compiler\Bond\Template\TypeMapping.hs;$(ProjectDir)..\compiler\Bond\Template\Util.hs;$(ProjectDir)..\compiler\Bond\Template\Cpp\Apply_cpp.hs;$(ProjectDir)..\compiler\Bond\Template\Cpp\Apply_h.hs;$(ProjectDir)..\compiler\Bond\Template\Cpp\Enum_h.hs;$(ProjectDir)..\compiler\Bond\Template\Cpp\Reflection_h.hs;$(ProjectDir)..\compiler\Bond\Template\Cpp\Types_cpp.hs;$(ProjectDir)..\compiler\Bond\Template\Cpp\Types_h.hs;$(ProjectDir)..\compiler\Bond\Template\Cpp\Util.hs;$(ProjectDir)..\compiler\Bond\Template\Cs\Types_cs.hs;$(ProjectDir)..\compiler\Bond\Template\Cs\Util.hs;%(AdditionalInputs)</AdditionalInputs>
+      <AdditionalInputs>$(ProjectDir)..\compiler\bond.cabal;$(ProjectDir)..\compiler\Main.hs;$(ProjectDir)..\compiler\IO.hs;$(ProjectDir)..\compiler\Options.hs;$(ProjectDir)..\compiler\src\Language\Bond\Lexer.hs;$(ProjectDir)..\compiler\src\Language\Bond\Parser.hs;$(ProjectDir)..\compiler\src\Language\Bond\Syntax\JSON.hs;$(ProjectDir)..\compiler\src\Language\Bond\Syntax\Types.hs;$(ProjectDir)..\compiler\src\Language\Bond\Syntax\Util.hs;$(ProjectDir)..\compiler\src\Language\Bond\Util.hs;$(ProjectDir)..\compiler\src\Language\Bond\Codegen\CustomMapping.hs;$(ProjectDir)..\compiler\src\Language\Bond\Codegen\TypeMapping.hs;;$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Templates.hs;$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Util.hs;$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\ApplyOverloads.hs;$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\Apply_cpp.hs;$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\Apply_h.hs;$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\Enum_h.hs;$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\Reflection_h.hs;$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\Types_cpp.hs;$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\Types_h.hs;$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\Util.hs;$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cs\Types_cs.hs;$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cs\Util.hs;%(AdditionalInputs)</AdditionalInputs>
       <Outputs>$(ProjectDir)\bin\gbc.exe</Outputs>          
       </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <None Include="$(ProjectDir)..\compiler\gbc.cabal" />
+    <None Include="$(ProjectDir)..\compiler\bond.cabal" />
     <None Include="$(ProjectDir)..\compiler\Main.hs" />
+    <None Include="$(ProjectDir)..\compiler\IO.hs" />
     <None Include="$(ProjectDir)..\compiler\Options.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Lexer.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Parser.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Schema.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Util.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Version.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Template\CustomMapping.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Template\TypeMapping.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Template\Util.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Template\Cpp\Apply_cpp.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Template\Cpp\Apply_h.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Template\Cpp\Enum_h.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Template\Cpp\Reflection_h.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Template\Cpp\Types_cpp.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Template\Cpp\Types_h.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Template\Cpp\Util.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Template\Cs\Types_cs.hs" />
-    <None Include="$(ProjectDir)..\compiler\Bond\Template\Cs\Util.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Lexer.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Parser.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Util.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Syntax\JSON.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Syntax\Types.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Syntax\Util.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Codegen\CustomMapping.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Codegen\TypeMapping.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Util.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Templates.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\ApplyOverloads.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\Apply_cpp.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\Apply_h.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\Enum_h.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\Reflection_h.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\Types_cpp.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\Types_h.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cpp\Util.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cs\Types_cs.hs" />
+    <None Include="$(ProjectDir)..\compiler\src\Language\Bond\Codegen\Cs\Util.hs" />
   </ItemGroup>  
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

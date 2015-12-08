@@ -7,6 +7,9 @@
 class InputFile
 {
 public:
+    InputFile()
+    {}
+
     InputFile(const std::string& name)
         : file(name, std::ios::binary),
           name(name)
@@ -57,7 +60,7 @@ public:
     
     void Read(bond::blob& blob, uint32_t size)
     {
-        boost::shared_ptr<char[]> buffer = boost::make_shared<char[]>(size);
+        boost::shared_ptr<char[]> buffer = boost::make_shared_noinit<char[]>(size);
 
         Read(buffer.get(), size);
         blob.assign(buffer, 0, size);
@@ -67,7 +70,7 @@ public:
     {
         file.seekg(size, std::ios::cur);
     }
-
+    
 private:
     mutable std::ifstream file;
     std::string name;

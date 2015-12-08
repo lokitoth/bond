@@ -23,7 +23,7 @@ implements_varint_write<Buffer, T, typename boost::enable_if<bond::check_method<
 
 
 template<typename Buffer, typename T>
-inline 
+inline
 typename boost::enable_if<implements_varint_write<Buffer, T> >::type
 WriteVariableUnsigned(Buffer& output, T value)
 {
@@ -35,7 +35,7 @@ WriteVariableUnsigned(Buffer& output, T value)
 
 
 template<typename Buffer, typename T>
-inline 
+inline
 typename boost::disable_if<implements_varint_write<Buffer, T> >::type
 WriteVariableUnsigned(Buffer& output, T value)
 {
@@ -75,13 +75,13 @@ implements_varint_read<Buffer, T, typename boost::enable_if<bond::check_method<v
 
 
 template<typename Buffer, typename T>
-inline 
+inline
 typename boost::enable_if<implements_varint_read<Buffer, T> >::type
 ReadVariableUnsigned(Buffer& input, T& value)
 {
     BOOST_STATIC_ASSERT(is_unsigned<T>::value);
 
-    // Use Buffer's implementation of ReadVariableUnsigned 
+    // Use Buffer's implementation of ReadVariableUnsigned
     input.ReadVariableUnsigned(value);
 }
 
@@ -107,18 +107,18 @@ void GenericReadVariableUnsigned(Buffer& input, T& value)
 
 
 template<typename Buffer, typename T>
-inline 
+inline
 typename boost::disable_if<implements_varint_read<Buffer, T> >::type
 ReadVariableUnsigned(Buffer& input, T& value)
 {
     BOOST_STATIC_ASSERT(is_unsigned<T>::value);
-    
+
     // Use generic ReadVariableUnsigned
     GenericReadVariableUnsigned(input, value);
 }
 
 
-// If protocol's Write(const bond::blob&) method doesn't write raw blob to 
+// If protocol's Write(const bond::blob&) method doesn't write raw blob to
 // output, this function needs to be overloaded appropriately.
 template <typename Writer>
 inline void WriteRawBlob(Writer& writer, const blob& data)
@@ -129,24 +129,19 @@ inline void WriteRawBlob(Writer& writer, const blob& data)
 
 // ZigZag encoding
 template<typename T>
-inline 
-typename make_unsigned<T>::type EncodeZigZag(T value) 
+inline
+typename make_unsigned<T>::type EncodeZigZag(T value)
 {
     return (value << 1) ^ (value >> (sizeof(T) * 8 - 1));
 }
 
-#pragma warning(push)
-#pragma warning(disable: 4146)
-
 // ZigZag decoding
 template<typename T>
-inline 
+inline
 typename make_signed<T>::type DecodeZigZag(T value)
 {
-    return (value >> 1) ^ (-(value & 1));
+    return (value >> 1) ^ (-static_cast<typename make_signed<T>::type>((value & 1)));
 }
-
-#pragma warning(pop)
 
 
 namespace detail
@@ -199,7 +194,7 @@ inline ReadStringData(Buffer& input, T& value, uint32_t length)
     resize_string(value, length);
     typename element_type<T>::type* data = string_data(value);
     typename string_char_int_type<T>::type ch;
-    for (int i = 0; i < length; ++i)
+    for (uint32_t i = 0; i < length; ++i)
     {
         input.Read(ch);
         data[i] = static_cast<typename element_type<T>::type>(ch);
@@ -219,7 +214,7 @@ inline WriteStringData(Buffer& output, const T& value, uint32_t length)
 {
     const typename element_type<T>::type* data = string_data(value);
     typename string_char_int_type<T>::type ch;
-    for (int i = 0; i < length; ++i)
+    for (uint32_t i = 0; i < length; ++i)
     {
         ch = static_cast<typename string_char_int_type<T>::type>(data[i]);
         output.Write(ch);

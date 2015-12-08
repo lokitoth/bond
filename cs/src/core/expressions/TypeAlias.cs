@@ -21,7 +21,17 @@ namespace Bond.Expressions
 
         public Expression Assign(Expression left, Expression right)
         {
-            var value = Convert(right, left.Type);
+            var leftType = left.Type;
+
+            if (leftType != right.Type &&
+                leftType.IsGenericType() &&
+                leftType.GetGenericTypeDefinition() == typeof (Nullable<>))
+            {
+                leftType = leftType.GetGenericArguments()[0];
+            }
+
+            var value = Convert(right, leftType);
+
             return Expression.Assign(left, PrunedExpression.Convert(value, left.Type));
         }
 
@@ -33,6 +43,13 @@ namespace Bond.Expressions
             if (type == typeof(Tag.wstring))
                 type = typeof(string);
 
+            if (type != value.Type &&
+                value.Type.IsGenericType() &&
+                value.Type.GetGenericTypeDefinition() == typeof (Nullable<>))
+            {
+                value = Expression.Convert(value, value.Type.GetGenericArguments()[0]);
+            }
+
             if (type != value.Type)
             {
                 // Converter can be defined either in the namespace/assembly of one of the types
@@ -41,7 +58,7 @@ namespace Bond.Expressions
 
                 foreach (var converter in all)
                 {
-                    var convert = converter.FindMethod("Convert", value.Type, type);
+                    var convert = converter.ResolveMethod("Convert", value.Type, type);
                     if (convert != null)
                         return Expression.Call(null, convert, value, Expression.Default(type));
                 }

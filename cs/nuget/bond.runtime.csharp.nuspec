@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+    <metadata>
+        <id>Bond.Runtime.CSharp</id>
+        <title>Bond C# runtime</title>
+        <version>$version$</version>
+        <authors>Microsoft</authors>
+        <owners>Microsoft</owners>
+        <projectUrl>https://github.com/Microsoft/bond/</projectUrl>
+        <licenseUrl>https://github.com/Microsoft/bond/blob/master/LICENSE</licenseUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <summary>Bond is an open source, cross-platform, cross-language framework for working with schematized data.</summary>
+        <description>
+            Bond is an open source, cross-platform framework for working with schematized data. It supports cross-language serialization/deserialization and powerful generic mechanisms for efficiently manipulating data.
+
+            Bond is published on GitHub at https://github.com/Microsoft/bond/
+
+            The C# documentation is available at https://microsoft.github.io/bond/manual/bond_cs.html
+
+            This package contains Bond runtime assemblies and can be specified as a dependency for other NuGet packages using Bond. The full Bond C# distribution is in the Bond.CSharp package.
+        </description>
+        <copyright>Copyright (c) Microsoft</copyright>
+        <tags>Bond .NET C# serialization</tags>
+        <dependencies>
+            <dependency id="Newtonsoft.Json" version="7.0.1" />
+            <dependency id="Bond.Core.CSharp" version ="[$version$]"/>
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="net45\Bond.JSON.dll" target="lib\net45" />
+        <file src="net45\Bond.JSON.xml" target="lib\net45" />
+        <file src="net45\Bond.JSON.pdb" target="lib\net45" />
+        <file src="net45\Bond.JSON.dll" target="lib\portable-net45+wp80+win8+wpa81+dnxcore50" />
+        <file src="net45\Bond.JSON.xml" target="lib\portable-net45+wp80+win8+wpa81+dnxcore50" />
+        <file src="net45\Bond.JSON.pdb" target="lib\portable-net45+wp80+win8+wpa81+dnxcore50" />
+        <file src="net40\Bond.JSON.dll" target="lib\net40" />
+        <file src="net40\Bond.JSON.xml" target="lib\net40" />
+        <file src="net40\Bond.JSON.pdb" target="lib\net40" />
+    </files>
+</package>

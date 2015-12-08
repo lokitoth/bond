@@ -11,11 +11,10 @@ namespace Bond.Expressions
 
     internal class DeserializerTransform<R>
     {
-        delegate Expression NewObject(Type type, Type schemaType);
-        delegate Expression NewContainer(Type type, Type schemaType, Expression count);
-
-        readonly NewObject newObject;
-        readonly NewContainer newContainer;
+        readonly Factory newObject = New;
+        readonly Factory newBonded = New;
+        readonly Factory newContainer = New;
+        readonly bool inlineNested;
         TypeAlias typeAlias;
 
         readonly Expression<Func<R, int, object>> deferredDeserialize;
@@ -30,16 +29,36 @@ namespace Bond.Expressions
             Reflection.GenericMethodInfoOf((object[] o) => Array.Resize(ref o, default(int)));
         static readonly ConstructorInfo arraySegmentCtor =
             typeof(ArraySegment<byte>).GetConstructor(typeof(byte[]), typeof(int), typeof(int));
+        static readonly MethodInfo bufferBlockCopy =
+            Reflection.MethodInfoOf((byte[] a) => Buffer.BlockCopy(a, default(int), a, default(int), default(int)));
 
         public DeserializerTransform(
             Expression<Func<R, int, object>> deferredDeserialize,
+            Factory factory,
+            bool inlineNested = true)
+        {
+            this.deferredDeserialize = deferredDeserialize;
+            this.inlineNested = inlineNested;
+
+            if (factory != null)
+            {
+                newObject = newContainer = newBonded = (t1, t2, a) =>
+                    factory(t1, t2, a) ?? New(t1, t2, a);
+            }
+        }
+
+        public DeserializerTransform(
+            Expression<Func<R, int, object>> deferredDeserialize,
+            bool inlineNested = true,
             Expression<Func<Type, Type, object>> createObject = null,
             Expression<Func<Type, Type, int, object>> createContainer = null)
         {
             this.deferredDeserialize = deferredDeserialize;
+            this.inlineNested = inlineNested;
+
             if (createObject != null)
             {
-                newObject = (t1, t2) =>
+                newObject = (t1, t2, a) =>
                     Expression.Convert(
                         Expression.Invoke(
                             createObject, 
@@ -47,25 +66,17 @@ namespace Bond.Expressions
                             Expression.Constant(t2)), 
                         t1);
             }
-            else
-            {
-                newObject = (t1, t2) => New(t1, t2);
-            }
 
             if (createContainer != null)
             {
-                newContainer = (t1, t2, count) =>
+                newContainer = (t1, t2, a) =>
                     Expression.Convert(
                         Expression.Invoke(
                             createContainer,
                             Expression.Constant(t1),
                             Expression.Constant(t2),
-                            count),
+                            a[0]),
                         t1);
-            }
-            else 
-            {
-                newContainer = (t1, t2, count) => New(t1, t2, count);
             }
         }
 
@@ -80,7 +91,7 @@ namespace Bond.Expressions
 
         Expression Deserialize(IParser parser, Expression var, Type objectType, Type schemaType, bool initialize)
         {
-            var inline = inProgress.Count != 0 && !inProgress.Contains(schemaType) && var != null;
+            var inline = inlineNested && inProgress.Count != 0 && !inProgress.Contains(schemaType) && var != null;
             Expression body;
 
             inProgress.Push(schemaType);
@@ -93,7 +104,7 @@ namespace Bond.Expressions
                 {
                     body = Expression.Block(
                         new[] { parser.ReaderParam },
-                        Expression.Assign(parser.ReaderParam, parser.ReaderValue),
+                        Expression.Assign(parser.ReaderParam, Expression.Convert(parser.ReaderValue, parser.ReaderParam.Type)),
                         body);
                 }
             }
@@ -110,7 +121,7 @@ namespace Bond.Expressions
                         Expression.Block(
                             new[] { result },
                             Struct(parser, result, schemaType, true),
-                            result),
+                            Expression.Convert(result, typeof(object))),
                         parser.ReaderParam);
                 }
 
@@ -157,7 +168,7 @@ namespace Bond.Expressions
                         from field in schemaType.GetSchemaFields()
                         select new Field(
                             Id: field.Id,
-                            Value: (fieldParser, fieldType) => CheckedValue(
+                            Value: (fieldParser, fieldType) => FieldValue(
                                 fieldParser,
                                 DataExpression.PropertyOrField(var, field.Name),
                                 fieldType,
@@ -244,19 +255,38 @@ namespace Bond.Expressions
                         var arrayElemType = container.Type.GetValueType();
                         var containerResizeMethod = arrayResize.MakeGenericMethod(arrayElemType);
 
-                        var i = Expression.Variable(typeof(int), "i");
-
                         if (initialize)
                         {
-                            beforeLoop = Expression.Block(
-                                Expression.Assign(container, newContainer(container.Type, schemaType, count)),
-                                Expression.Assign(i, Expression.Constant(0)));
+                            beforeLoop = 
+                                Expression.Assign(container, newContainer(container.Type, schemaType, count));
                         }
-                        else
+
+                        if (arrayElemType == typeof(byte))
                         {
-                            beforeLoop = Expression.Block(
-                                Expression.Assign(i, Expression.Constant(0)));
+                            var parseBlob = parser.Blob(count);
+                            if (parseBlob != null)
+                            {
+                                var blob = Expression.Variable(typeof(ArraySegment<byte>), "blob");
+                                return Expression.Block(
+                                    new[] { blob },
+                                    beforeLoop,
+                                    Expression.Assign(blob, parseBlob),
+                                    Expression.Call(null, bufferBlockCopy, new[]
+                                    {
+                                        Expression.Property(blob, "Array"),
+                                        Expression.Property(blob, "Offset"),
+                                        container,
+                                        Expression.Constant(0),
+                                        count
+                                    }));
+                            }
                         }
+
+                        var i = Expression.Variable(typeof(int), "i");
+
+                        beforeLoop = Expression.Block(
+                            beforeLoop,
+                            Expression.Assign(i, Expression.Constant(0)));
 
                         // Resize the array if we've run out of room
                         var maybeResize =
@@ -361,9 +391,24 @@ namespace Bond.Expressions
                 });
         }
 
-        Expression CheckedValue(IParser parser, Expression var, Expression valueType, Type schemaType, bool initialize)
+        Expression FieldValue(IParser parser, Expression var, Expression valueType, Type schemaType, bool initialize)
         {
-            var body = Value(parser, var, valueType, schemaType, initialize);
+            Expression body;
+
+            if (schemaType.IsBondStruct() && var.Type.IsValueType())
+            {
+                // Special handling for properties of struct types: we deserialize into
+                // a temp variable and then assign the value to the property.
+                var temp = Expression.Variable(var.Type, "temp");
+                body = Expression.Block(
+                    new[] { temp },
+                    Value(parser, temp, valueType, schemaType, true),
+                    Expression.Assign(var, temp));
+            }
+            else
+            {
+                body = Value(parser, var, valueType, schemaType, initialize);
+            }
 
             if (schemaType.IsBondContainer() || schemaType.IsBondStruct() || schemaType.IsBondNullable())
             {
@@ -384,8 +429,8 @@ namespace Bond.Expressions
 
             if (schemaType.IsBonded())
             {
-                var convert = bondedConvert.MakeGenericMethod(var.Type.GetValueType());
-                return parser.Bonded(value => Expression.Assign(var, Expression.Call(value, convert)));
+                return parser.Bonded(value => Expression.Assign(var, 
+                    newBonded(var.Type, schemaType, PrunedExpression.Convert(value, typeof(IBonded)))));
             }
 
             if (schemaType.IsBondStruct())
@@ -410,7 +455,16 @@ namespace Bond.Expressions
 
         static Expression New(Type type, Type schemaType, params Expression[] arguments)
         {
-            if (schemaType.IsGenericType())
+            if (type.IsGenericType() && type.GetGenericTypeDefinition() == typeof(IBonded<>))
+            {
+                var convert = bondedConvert.MakeGenericMethod(type.GetValueType());
+                return Expression.Call(arguments[0], convert);
+            }
+            else if (schemaType.IsBonded())
+            {
+                schemaType = type;
+            }
+            else if (schemaType.IsGenericType())
             {
                 schemaType = schemaType.GetGenericTypeDefinition().MakeGenericType(type.GetGenericArguments());
             }
@@ -421,12 +475,7 @@ namespace Bond.Expressions
             }
 
             var ctor = schemaType.GetConstructor(arguments.Select(a => a.Type).ToArray());
-            if (ctor != null)
-            {
-                return Expression.New(ctor, arguments);
-            }
-
-            return Expression.New(schemaType);
+            return ctor != null ? Expression.New(ctor, arguments) : Expression.New(schemaType);
         }
     }
 }
